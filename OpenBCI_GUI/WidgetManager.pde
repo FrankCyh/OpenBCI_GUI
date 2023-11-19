@@ -28,6 +28,8 @@ W_PacketLoss w_packetLoss;
 W_Focus w_focus;
 W_EMGJoystick w_emgJoystick;
 W_Marker w_marker;
+W_MyNewWidget w_myNewWidget;
+//W_MySecondNewWidget w_mySecondNewWidget;
 
 //ADD YOUR WIDGET TO WIDGETS OF WIDGETMANAGER
 void setupWidgets(PApplet _this, ArrayList<Widget> w){
@@ -130,9 +132,15 @@ void setupWidgets(PApplet _this, ArrayList<Widget> w){
     w_template1.setTitle("Widget Template 1");
     addWidget(w_template1, w);
 
+    //my new widget
+    w_myNewWidget = new W_MyNewWidget(_this);
+    w_myNewWidget.setTitle("My New Widget");
+    addWidget(w_myNewWidget, w);
     
-
-
+    //my second new widget
+    //w_mySecondNewWidget = new W_MySecondNewWidget(_this);
+    //w_mySecondNewWidget.setTitle("My Second New Widget");
+    //addWidget(w_mySecondNewWidget, w);
 }
 
 //========================================================================================

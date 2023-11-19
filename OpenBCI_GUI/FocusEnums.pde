@@ -9,7 +9,8 @@ public enum FocusXLim implements IndexingInterface
 {
     FIVE (0, 5, "5 sec"),
     TEN (1, 10, "10 sec"),
-    TWENTY (2, 20, "20 sec");
+    TWENTY (2, 20, "20 sec"),
+    THIRTY (3, 30, "30 sec");
 
     private int index;
     private int value;
@@ -34,6 +35,45 @@ public enum FocusXLim implements IndexingInterface
     @Override
     public int getIndex() {
         return index;
+    }
+
+    public static List<String> getEnumStringsAsList() {
+        List<String> enumStrings = new ArrayList<String>();
+        for (IndexingInterface val : vals) {
+            enumStrings.add(val.getString());
+        }
+        return enumStrings;
+    }
+}
+
+public enum MyMetric implements IndexingInterface
+{
+    MOVEMENT (0, "Movement", "Moving"),
+    STIMULATION (1, "Stimulation", "Stimulating");
+
+    private int index;
+    private String label;
+    private String idealState;
+    private static MyMetric[] vals = values();
+
+    MyMetric(int _index, String _label, String _idealState) {
+        this.index = _index;
+        this.label = _label;
+        this.idealState = _idealState;
+    }
+
+    @Override
+    public String getString() {
+        return label;
+    }
+
+    @Override
+    public int getIndex() {
+        return index;
+    }
+
+    public String getIdealStateString() {
+        return idealState;
     }
 
     public static List<String> getEnumStringsAsList() {
