@@ -34,6 +34,8 @@ import brainflow.LogLevels;
 import brainflow.MLModel;
 /* End of copy */
 
+import java.util.Random;
+
 // global bool to indicate which model is performing now
 private boolean hands = false;
 private boolean stimulations = false;
@@ -293,7 +295,7 @@ class W_MyNewWidget extends Widget {
                 }
             }
         });
-        motorModelButton.setDescription("Click to redirect to our implementation of motor model.");
+        motorModelButton.setDescription("Click to redirect to our motor model.");
     }
 
     private void createP300ModelButton() {
@@ -310,7 +312,7 @@ class W_MyNewWidget extends Widget {
                 }
             }
         });
-        p300ModelButton.setDescription("Click to redirect to our implementation of P300 model.");
+        p300ModelButton.setDescription("Click to redirect to our P300 model.");
     }
 
     // add custom functions here
@@ -406,6 +408,10 @@ class W_MyNewWidget extends Widget {
         }*/
         if (currentBoard.isStreaming()) {
             double random_number = 0.75 + (Math.random() * 0.25);
+
+            /*long seed = 12345;
+            Random random_generator = new Random(seed);
+            double random_number = 0.75 + random_generator.nextDouble() * 0.25;*/
 
             int delay = 50; // number of milliseconds to sleep
             long start = System.currentTimeMillis();
