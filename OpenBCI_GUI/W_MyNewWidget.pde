@@ -8,6 +8,16 @@
 //                                                //
 ////////////////////////////////////////////////////
 
+/*
+ * To-Do Lists:
+ * 1. need three classes to identify: no hands are moving, moving left hand only, moving right hand only
+ *    currently our model only supports two, i.e., moving left hand and moving right hand
+ * 2. need to figure out how to parse the output from our models
+ *    i.e., at least should have 1 numeric value that indicates one of the three classes
+ *    and also need to have its corresponding time value (must or better to have?) to plot the graph
+ * 3. integrate models into brainflow library, generate our own dynamic library and load from it (doable?)
+ */
+
 /* Beginning of copy */
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -24,7 +34,7 @@ import brainflow.LogLevels;
 import brainflow.MLModel;
 /* End of copy */
 
-
+// global bool to indicate which model is performing now
 private boolean hands = false;
 private boolean stimulations = false;
 
@@ -73,7 +83,7 @@ class W_MyNewWidget extends Widget {
     private boolean leftHand = false;
 
     // the constructor initializes the widget
-    W_MyNewWidget(PApplet _parent){
+    W_MyNewWidget(PApplet _parent) {
         super(_parent); // calls the parent CONSTRUCTOR method of Widget (DON'T REMOVE)
         
         // This is the protocol for setting up dropdowns.
@@ -138,7 +148,7 @@ class W_MyNewWidget extends Widget {
     }
 
     // refreshes UI elements and updates the metric
-    public void update(){
+    public void update() {
         super.update(); //calls the parent update() method of Widget (DON'T REMOVE)
 
         //put your code here...
@@ -155,8 +165,7 @@ class W_MyNewWidget extends Widget {
 
         //channelSelectFlexWidgetUI();
 
-        // TO-DO: our work is not capable of using "currentBoard.isStreaming" to update the scores
-        // need to find a way to update the scores so that the scores are updated in "real time"
+        // upon the app is streaming data
         if (currentBoard.isStreaming()) {
             dataGrid.setString(df.format(metricPrediction), 0, 1);
             focusBar.update(metricPrediction);
@@ -167,7 +176,7 @@ class W_MyNewWidget extends Widget {
     }
 
     // handles the rendering of the widget
-    public void draw(){
+    public void draw() {
         super.draw(); //calls the parent draw() method of Widget (DON'T REMOVE)
 
         /* Beginning of copy */
@@ -206,7 +215,7 @@ class W_MyNewWidget extends Widget {
     }
 
     // handles screen resizing
-    public void screenResized(){
+    public void screenResized() {
         super.screenResized(); //calls the parent screenResized() method of Widget (DON'T REMOVE)
 
         // Very important to allow users to interact with objects after app resize        
@@ -251,7 +260,7 @@ class W_MyNewWidget extends Widget {
     }
 
     // handles user interactions, e.g., mouse click
-    public void mousePressed(){
+    public void mousePressed() {
         super.mousePressed(); //calls the parent mousePressed() method of Widget (DON'T REMOVE)
         //Since GUI v5, these methods should not really be used.
         //Instead, use ControlP5 objects and callbacks. 
@@ -262,7 +271,7 @@ class W_MyNewWidget extends Widget {
     }
 
     // handles user interactions, e.g., mouse release
-    public void mouseReleased(){
+    public void mouseReleased() {
         super.mouseReleased(); //calls the parent mouseReleased() method of Widget (DON'T REMOVE)
         //Since GUI v5, these methods should not really be used.
     }
@@ -305,7 +314,7 @@ class W_MyNewWidget extends Widget {
     }
 
     // add custom functions here
-    //private void customFunction(){
+    //private void customFunction() {
         //this is a fake function... replace it with something relevant to this widget
 
     //}
@@ -613,8 +622,7 @@ public void myFocusThresholdDropdown(int n) {
     w_myNewWidget.setThreshold(n);
 }
 
-// This class contains the time series plot for the focus metric over time
-// TO-DO: our imported data, e.g., confidence value vs time
+// This class contains the time series plot for the our metric over time
 class myFocusBar {
     int x, y, w, h;
     int focusBarPadding = 30;
