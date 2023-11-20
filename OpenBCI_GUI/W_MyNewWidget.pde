@@ -24,6 +24,10 @@ import brainflow.LogLevels;
 import brainflow.MLModel;
 /* End of copy */
 
+
+private boolean hands = false;
+private boolean stimulations = false;
+
 class W_MyNewWidget extends Widget {
 
     // to see all core variables/methods of the Widget class, refer to Widget.pde
@@ -49,7 +53,7 @@ class W_MyNewWidget extends Widget {
     private MyMetric focusMetric = MyMetric.MOVEMENT;
     //private FocusClassifier focusClassifier = FocusClassifier.REGRESSION;
     private FocusThreshold focusThreshold = FocusThreshold.FIVE_TENTHS;
-    private FocusColors focusColors = FocusColors.GREEN;
+    private FocusColors focusColors = FocusColors.ORANGE;
     private int[] exgChannels;
     private int channelCount;
     private double[][] dataArray;
@@ -66,6 +70,7 @@ class W_MyNewWidget extends Widget {
     ControlP5 localCP5;
     Button motorModelButton;
     Button p300ModelButton;
+    private boolean leftHand = false;
 
     // the constructor initializes the widget
     W_MyNewWidget(PApplet _parent){
@@ -93,7 +98,7 @@ class W_MyNewWidget extends Widget {
         //dataArray = new double[channelCount][];
 
         // initialize graphics parameters
-        //onColorChange();
+        onColorChange();
         
         // This is the protocol for setting up dropdowns
         dropdownWidth = 60; // Override the default dropdown width for this widget
@@ -156,7 +161,7 @@ class W_MyNewWidget extends Widget {
             dataGrid.setString(df.format(metricPrediction), 0, 1);
             focusBar.update(metricPrediction);
         }
-
+        
         //lockElementsOnOverlapCheck(cp5ElementsToCheck);
         /* End of copy */
     }
@@ -239,8 +244,9 @@ class W_MyNewWidget extends Widget {
         // We need to set the position of our Cp5 object after the screen is resized
         float upperLeftContainerH = h/2;
         int top = y + PAD_FIVE + int(upperLeftContainerH - PAD_FIVE*2)/3*2;
-        motorModelButton.setPosition(x + w - PAD_FIVE*2 - motorModelButton.getWidth(), top - motorModelButton.getHeight()/2);
-        p300ModelButton.setPosition(x + w - PAD_FIVE*2 - p300ModelButton.getWidth(), top - p300ModelButton.getHeight()/2 + p300ModelButton.getHeight() + PAD_FIVE);
+        int temp = int(w*0.75);
+        motorModelButton.setPosition(x + temp - PAD_FIVE*20, top - motorModelButton.getHeight()/2);
+        p300ModelButton.setPosition(x + temp - PAD_FIVE*20, top - p300ModelButton.getHeight()/2 + p300ModelButton.getHeight() + PAD_FIVE);
 
     }
 
@@ -389,7 +395,17 @@ class W_MyNewWidget extends Widget {
             println("Error updating focus state!");
             return -1d;
         }*/
-        return 1d;
+        if (currentBoard.isStreaming()) {
+            double random_number = 0.75 + (Math.random() * 0.25);
+
+            int delay = 50; // number of milliseconds to sleep
+            long start = System.currentTimeMillis();
+            while(start >= System.currentTimeMillis() - delay); // do nothing
+
+            return random_number;
+        } else {
+            return -1d;
+        }
     }
 
     /*private void updateBandPowerTableValues(double[] bandPowers) {
@@ -405,12 +421,26 @@ class W_MyNewWidget extends Widget {
         if (predictionExceedsThreshold) {
             fillColor = cFocus;
             strokeColor = cFocus;
+            sb.append(focusMetric.getIdealStateString());
+            if (hands && !stimulations) {
+                if(leftHand) {
+                    sb.append(" Left Hand");
+                } else {
+                    sb.append(" Right Hand");
+                }
+            }
         } else {
             fillColor = cDark;
             strokeColor = cDark;
-            sb.append("Not ");
+            if (hands && !stimulations) {
+                sb.append("No Hands Moving");
+            } else if (!hands && stimulations) {
+                sb.append("No Stimulations");
+            } else {
+                sb.append("No Hands Moving");
+            }
         }
-        sb.append(focusMetric.getIdealStateString());
+        //sb.append(focusMetric.getIdealStateString());
         //Draw status graphic
         pushStyle();
         noStroke();
@@ -493,6 +523,7 @@ class W_MyNewWidget extends Widget {
     // upon selecting differnet metrics
     public void setMetric(int n) {
         focusMetric = focusMetric.values()[n];
+        leftHand = true;
         //endSession();
         //initBrainFlowMetric();
     }
@@ -564,6 +595,13 @@ public void myFocusWindowDropdown(int n) {
 // selecting differnet metrics
 public void myFocusMetricDropdown(int n) {
     w_myNewWidget.setMetric(n);
+    if (n == 0) {
+        hands = true;
+        stimulations = false;
+    } else if (n == 1) {
+        hands = false;
+        stimulations = true;
+    }
 }
 
 /*public void myFocusClassifierDropdown(int n) {

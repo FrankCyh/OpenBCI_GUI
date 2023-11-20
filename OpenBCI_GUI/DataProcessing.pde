@@ -301,6 +301,7 @@ class DataProcessing {
         /////////////////////////////////////////////////////////////
         emgSettings.values.process(dataProcessingFilteredBuffer);
         w_focus.updateFocusWidgetData();
+        w_myNewWidget.updateFocusWidgetData();
         w_bandPower.updateBandPowerWidgetData();
         w_emgJoystick.updateEmgJoystickWidgetData();
         if (w_pulsesensor != null) {
