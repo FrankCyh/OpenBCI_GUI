@@ -9,13 +9,10 @@
 ////////////////////////////////////////////////////
 
 /*
- * To-Do Lists:
- * 1. need three classes to identify: no hands are moving, moving left hand only, moving right hand only
- *    currently our model only supports two, i.e., moving left hand and moving right hand
- * 2. need to figure out how to parse the output from our models
- *    i.e., at least should have 1 numeric value that indicates one of the three classes
- *    and also need to have its corresponding time value (must or better to have?) to plot the graph
- * 3. integrate models into brainflow library, generate our own dynamic library and load from it (doable?)
+ * Known Issue:
+ * 1. After entering the GUI, when you re-select .txt files
+ * from Playback History Widget, you need to re-select
+ * MyNewWidget Widget and the metric (Movement/Stimulation) 
  */
 
 /* Beginning of copy */
@@ -37,7 +34,7 @@ import brainflow.MLModel;
 import java.util.Random;
 
 // global bool to indicate which model is performing now
-private boolean hands = false;
+private boolean hands = true;
 private boolean stimulations = false;
 
 class W_MyNewWidget extends Widget {
@@ -46,8 +43,8 @@ class W_MyNewWidget extends Widget {
     // put your custom variables here...
 
     /* Beginning of copy */
-    //private ChannelSelect myNewChanSelect;
-    //private boolean prevChanSelectIsVisible = false;
+    private ChannelSelect myNewChanSelect;
+    private boolean prevChanSelectIsVisible = false;
     //private AuditoryNeurofeedback auditoryNeurofeedback;
     private Grid dataGrid;
     private final int NUM_TABLE_ROWS = 1;   // constant
@@ -64,12 +61,12 @@ class W_MyNewWidget extends Widget {
     private FocusXLim xLimit = FocusXLim.TEN;
     private MyMetric focusMetric = MyMetric.MOVEMENT;
     //private FocusClassifier focusClassifier = FocusClassifier.REGRESSION;
-    private FocusThreshold focusThreshold = FocusThreshold.FIVE_TENTHS;
+    private FocusThreshold focusThreshold = FocusThreshold.SEVEN_TENTHS;
     private FocusColors focusColors = FocusColors.ORANGE;
     private int[] exgChannels;
     private int channelCount;
     private double[][] dataArray;
-    //private MLModel mlModel;
+    private MLModel mlModel;
     private double metricPrediction = 0d;
     private boolean predictionExceedsThreshold = false;
     private float xc, yc, wc, hc; // status circle center xy, width and height
@@ -83,6 +80,7 @@ class W_MyNewWidget extends Widget {
     Button motorModelButton;
     Button p300ModelButton;
     private boolean leftHand = false;
+    private boolean rightHand = false;
 
     // the constructor initializes the widget
     W_MyNewWidget(PApplet _parent) {
@@ -97,17 +95,17 @@ class W_MyNewWidget extends Widget {
 
         /* Beginning of copy */
         // Add channel select dropdown to this widget
-        //myNewChanSelect = new ChannelSelect(pApplet, this, x, y, w, navH, "MyNewWidgetChannelSelect");
-        //myNewChanSelect.activateAllButtons();
-        //cp5ElementsToCheck.addAll(myNewChanSelect.getCp5ElementsForOverlapCheck());
+        myNewChanSelect = new ChannelSelect(pApplet, this, x, y, w, navH, "MyNewWidgetChannelSelect");
+        myNewChanSelect.activateAllButtons();
+        cp5ElementsToCheck.addAll(myNewChanSelect.getCp5ElementsForOverlapCheck());
 
         //auditoryNeurofeedback = new AuditoryNeurofeedback(x + PAD_FIVE, y + PAD_FIVE, w/2 - PAD_FIVE*2, navBarHeight/2);
         //cp5ElementsToCheck.add((controlP5.Controller)auditoryNeurofeedback.startStopButton);
         //cp5ElementsToCheck.add((controlP5.Controller)auditoryNeurofeedback.modeButton);
 
-        //exgChannels = currentBoard.getEXGChannels();
-        //channelCount = currentBoard.getNumEXGChannels();
-        //dataArray = new double[channelCount][];
+        exgChannels = currentBoard.getEXGChannels();
+        channelCount = currentBoard.getNumEXGChannels();
+        dataArray = new double[channelCount][];
 
         // initialize graphics parameters
         onColorChange();
@@ -136,7 +134,7 @@ class W_MyNewWidget extends Widget {
         updateGraphDims();
         focusBar = new myFocusBar(_parent, xLimit.getValue(), focusBarHardYAxisLimit, graphX, graphY, graphW, graphH);
 
-        //initBrainFlowMetric();
+        initBrainFlowMetric();
         /* End of copy */
 
         // Instantiate local cp5 for this box. This allows extra control of drawing cp5 elements specifically inside this class.
@@ -157,13 +155,13 @@ class W_MyNewWidget extends Widget {
 
         /* Beginning of copy */
         //Update channel checkboxes and active channels
-        //myNewChanSelect.update(x, y, w);
+        myNewChanSelect.update(x, y, w);
 
         //Flex the Gplot graph when channel select dropdown is open/closed
-        /*if (myNewChanSelect.isVisible() != prevChanSelectIsVisible) {
+        if (myNewChanSelect.isVisible() != prevChanSelectIsVisible) {
             channelSelectFlexWidgetUI();
             prevChanSelectIsVisible = myNewChanSelect.isVisible();
-        }*/
+        }
 
         //channelSelectFlexWidgetUI();
 
@@ -206,7 +204,7 @@ class W_MyNewWidget extends Widget {
         // draw the graph
         focusBar.draw();
 
-        //myNewChanSelect.draw();
+        myNewChanSelect.draw();
         /* End of copy */
 
         //remember to refer to x,y,w,h which are the positioning variables of the Widget class
@@ -237,7 +235,7 @@ class W_MyNewWidget extends Widget {
         updateGraphDims();
         focusBar.screenResized(graphX, graphY, graphW, graphH);
 
-        //myNewChanSelect.screenResized(pApplet);
+        myNewChanSelect.screenResized(pApplet);
 
         // Custom resize these dropdowns due to longer text strings as options
         cp5_widget.get(ScrollableList.class, "myFocusMetricDropdown").setWidth(METRIC_DROPDOWN_W);
@@ -268,7 +266,7 @@ class W_MyNewWidget extends Widget {
         //Instead, use ControlP5 objects and callbacks. 
         //Example: createWidgetTemplateButton() found below
         /* Beginning of copy */
-        //myNewChanSelect.mousePressed(this.dropdownIsActive); //Calls channel select mousePressed and checks if clicked
+        myNewChanSelect.mousePressed(this.dropdownIsActive); //Calls channel select mousePressed and checks if clicked
         /* End of copy */
     }
 
@@ -291,7 +289,7 @@ class W_MyNewWidget extends Widget {
             public void controlEvent(CallbackEvent theEvent) {
                 //If using a TopNav object, ignore interaction with widget object (ex. widgetTemplateButton)
                 if (!topNav.configSelector.isVisible && !topNav.layoutSelector.isVisible) {
-                    openURLInBrowser("https://drive.google.com/drive/folders/1zvqiY50xJSQdjj9FDotUKfD_4f3fqcU9");
+                    openURLInBrowser("https://github.com/FrankCyh/openBCI/tree/main/src/classification/motor_imagery_classification");
                 }
             }
         });
@@ -308,7 +306,7 @@ class W_MyNewWidget extends Widget {
             public void controlEvent(CallbackEvent theEvent) {
                 //If using a TopNav object, ignore interaction with widget object (ex. widgetTemplateButton)
                 if (!topNav.configSelector.isVisible && !topNav.layoutSelector.isVisible) {
-                    openURLInBrowser("https://drive.google.com/drive/folders/1zvqiY50xJSQdjj9FDotUKfD_4f3fqcU9");
+                    openURLInBrowser("https://github.com/FrankCyh/openBCI/tree/main/src/classification/p300_classification");
                 }
             }
         });
@@ -323,7 +321,7 @@ class W_MyNewWidget extends Widget {
 
     /* Beginning of copy */
     private void resizeTable() {
-        //int extraPadding = myNewChanSelect.isVisible() ? navHeight : 0;
+        int extraPadding = myNewChanSelect.isVisible() ? navHeight : 0;
         float upperLeftContainerW = w/2;
         float upperLeftContainerH = h/2;
         //float min = min(upperLeftContainerW, upperLeftContainerH);
@@ -364,8 +362,14 @@ class W_MyNewWidget extends Widget {
     // returns a metric value from 0. to 1. When there is an error, returns -1.
     // computes metric using EEG data, leveraging the BrainFlow library for data processing and analysis
     private double updateFocusState() {
-        /*try {
-            int windowSize = currentBoard.getSampleRate() * xLimit.getValue();
+        try {
+            int windowSize = 0;
+            if (hands) {
+                windowSize = int(currentBoard.getSampleRate() * 5); // for motor, input data needs to be sample rate * 5
+            } else if (stimulations) {
+                windowSize = int(currentBoard.getSampleRate() * 0.5); // for P300, input data needs to be sample rate * 0.5
+            }
+            
             // getData in GUI returns data in shape ndatapoints x nchannels, in BrainFlow its transposed
             List<double[]> currentData = currentBoard.getData(windowSize);
 
@@ -380,24 +384,56 @@ class W_MyNewWidget extends Widget {
                 }
             }
 
-            int[] channelsInDataArray = ArrayUtils.toPrimitive(
-                    myNewChanSelect.activeChan.toArray(
-                        new Integer[myNewChanSelect.activeChan.size()]
-                    ));
+            double[] flattenedArray = null; // used as ML model input
+            if (hands) {
+                flattenedArray = new double[windowSize*2]; // for motor, we use only two channels
 
-            //Full Source Code for this method: https://github.com/brainflow-dev/brainflow/blob/c5f0ad86683e6eab556e30965befb7c93e389a3b/src/data_handler/data_handler.cpp#L1115
-            Pair<double[], double[]> bands = DataFilter.get_avg_band_powers (dataArray, channelsInDataArray, currentBoard.getSampleRate(), true);
-            double[] featureVector = bands.getLeft ();
+                int index = 0; // This index tracks where we are in the flattened array
+                for (int j = 0; j < dataArray[2].length; j++) {
+                    flattenedArray[index++] = dataArray[2][j];
+                }
+                for (int j = 0; j < dataArray[3].length; j++) {
+                    flattenedArray[index++] = dataArray[3][j];
+                }
+            } else if (stimulations) {
+                flattenedArray = new double[windowSize*5]; // for P300, we use 5 channels
 
-            //Left array is Averages, right array is Standard Deviations. Update values using Averages.
-            updateBandPowerTableValues(bands.getLeft());
+                int index = 0; // This index tracks where we are in the flattened array
+                for (int j = 0; j < dataArray[3].length; j++) {
+                    flattenedArray[index++] = dataArray[3][j];
+                }
+                for (int j = 0; j < dataArray[4].length; j++) {
+                    flattenedArray[index++] = dataArray[4][j];
+                }
+                for (int j = 0; j < dataArray[2].length; j++) {
+                     flattenedArray[index++] = dataArray[2][j];
+                }
+                for (int j = 0; j < dataArray[6].length; j++) {
+                    flattenedArray[index++] = dataArray[6][j];
+                }
+                for (int j = 0; j < dataArray[5].length; j++) {
+                    flattenedArray[index++] = dataArray[5][j];
+                }
+            }
 
-            //Keep this here
-            double prediction = mlModel.predict(featureVector)[0];
-            //println("Concentration: " + prediction);
+            double[] predictions = mlModel.predict(flattenedArray);
+            double prediction = -1;
 
-            //Send band power and prediction data to AuditoryNeurofeedback class
-            //auditoryNeurofeedback.update(bands.getLeft(), (float)prediction);
+            if (hands) {
+                double lhPrediction = predictions[0]; // left hand
+                double rhPrediction = predictions[1]; // right hand
+                if (lhPrediction > rhPrediction) {
+                    leftHand = true;
+                    rightHand = false;
+                    prediction = lhPrediction;
+                } else {
+                    leftHand = false;
+                    rightHand = true;
+                    prediction = rhPrediction;
+                }
+            } else if (stimulations) {
+                prediction = predictions[0];
+            }
             
             return prediction;
 
@@ -405,29 +441,29 @@ class W_MyNewWidget extends Widget {
             e.printStackTrace();
             println("Error updating focus state!");
             return -1d;
-        }*/
-        if (currentBoard.isStreaming()) {
-            double random_number = 0.75 + (Math.random() * 0.25);
-
-            /*long seed = 12345;
-            Random random_generator = new Random(seed);
-            double random_number = 0.75 + random_generator.nextDouble() * 0.25;*/
-
-            int delay = 50; // number of milliseconds to sleep
-            long start = System.currentTimeMillis();
-            while(start >= System.currentTimeMillis() - delay); // do nothing
-
-            return random_number;
-        } else {
-            return -1d;
         }
+        // if (currentBoard.isStreaming()) {
+        //     double random_number = 0.75 + (Math.random() * 0.25);
+
+        //     /*long seed = 12345;
+        //     Random random_generator = new Random(seed);
+        //     double random_number = 0.75 + random_generator.nextDouble() * 0.25;*/
+
+        //     int delay = 50; // number of milliseconds to sleep
+        //     long start = System.currentTimeMillis();
+        //     while(start >= System.currentTimeMillis() - delay); // do nothing
+
+        //     return random_number;
+        // } else {
+        //     return -1d;
+        // }
     }
 
-    /*private void updateBandPowerTableValues(double[] bandPowers) {
+    private void updateBandPowerTableValues(double[] bandPowers) {
         for (int i = 0; i < bandPowers.length; i++) {
             dataGrid.setString(df.format(bandPowers[i]), 1 + i, 1);
         }
-    }*/
+    }
 
     private void drawStatusCircle() {
         color fillColor;
@@ -436,13 +472,18 @@ class W_MyNewWidget extends Widget {
         if (predictionExceedsThreshold) {
             fillColor = cFocus;
             strokeColor = cFocus;
-            sb.append(focusMetric.getIdealStateString());
             if (hands && !stimulations) {
-                if(leftHand) {
-                    sb.append(" Left Hand");
+                if (leftHand) {
+                    sb.append("Moving Left Hand");
+                } else if (rightHand) {
+                    sb.append("Moving Right Hand");
                 } else {
-                    sb.append(" Right Hand");
+                    fillColor = cDark;
+                    strokeColor = cDark;
+                    sb.append("No Hands Moving");
                 }
+            } else if (!hands && stimulations) {
+                sb.append("Stimulated");
             }
         } else {
             fillColor = cDark;
@@ -451,8 +492,6 @@ class W_MyNewWidget extends Widget {
                 sb.append("No Hands Moving");
             } else if (!hands && stimulations) {
                 sb.append("No Stimulations");
-            } else {
-                sb.append("No Hands Moving");
             }
         }
         //sb.append(focusMetric.getIdealStateString());
@@ -469,27 +508,29 @@ class W_MyNewWidget extends Widget {
         popStyle();
     }
 
-    /*private void initBrainFlowMetric() {
-        BrainFlowModelParams modelParams = new BrainFlowModelParams(
-                focusMetric.getMetric().get_code()
-                //focusClassifier.getClassifier().get_code()
-                );
+    private void initBrainFlowMetric() {
+        BrainFlowModelParams modelParams = new BrainFlowModelParams(BrainFlowMetrics.USER_DEFINED, BrainFlowClassifiers.ONNX_CLASSIFIER);
+        if (hands && !stimulations) {
+            modelParams.file = "/Users/jiayizhou/Desktop/motor_no_csp.onnx";
+        } else if (!hands && stimulations) {
+            modelParams.file = "/Users/jiayizhou/Desktop/test_opset_version_11.onnx";
+        }
         mlModel = new MLModel (modelParams);
         try {
             mlModel.prepare();
         } catch (BrainFlowError e) {
             e.printStackTrace();
         }
-    }*/
+    }
 
     //Called on haltSystem() when GUI exits or session stops
-    /*public void endSession() {
+    public void endSession() {
         try {
             mlModel.release();
         } catch (BrainFlowError e) {
             e.printStackTrace();
         }
-    }*/
+    }
 
     private void onColorChange() {
         switch(focusColors) {
@@ -520,14 +561,14 @@ class W_MyNewWidget extends Widget {
         }
     }
 
-    /*void channelSelectFlexWidgetUI() {
+    void channelSelectFlexWidgetUI() {
         //focusBar.setPlotPosAndOuterDim(myNewChanSelect.isVisible());
         focusBar.setPlotPosAndOuterDim(false);
         int factor = myNewChanSelect.isVisible() ? 1 : -1;
         yc += navHeight * factor;
         resizeTable();
         //updateAuditoryNeurofeedbackPosition();
-    }*/
+    }
 
     // upon selecting differnet time windows
     public void setFocusHorizScale(int n) {
@@ -538,9 +579,16 @@ class W_MyNewWidget extends Widget {
     // upon selecting differnet metrics
     public void setMetric(int n) {
         focusMetric = focusMetric.values()[n];
-        leftHand = true;
-        //endSession();
-        //initBrainFlowMetric();
+        if (n == 0) {
+            hands = true;
+            stimulations = false;
+        } else if (n == 1) {
+            hands = false;
+            stimulations = true;
+        }
+        //leftHand = true;
+        endSession();
+        initBrainFlowMetric();
     }
 
     /*public void setClassifier(int n) {
