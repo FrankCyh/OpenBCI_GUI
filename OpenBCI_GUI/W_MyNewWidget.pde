@@ -4,7 +4,7 @@
 //    Enums can be found in FocusEnums.pde        //
 //                                                //
 //                                                //
-//    Created by: Jiayi Zhou 2023                 //
+//    Created by: Jiayi Zhou 2023-24              //
 //                                                //
 ////////////////////////////////////////////////////
 
@@ -32,6 +32,12 @@ import brainflow.MLModel;
 /* End of copy */
 
 import java.util.Random;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 
 // global bool to indicate which model is performing now
 private boolean hands = true;
@@ -61,7 +67,7 @@ class W_MyNewWidget extends Widget {
     private FocusXLim xLimit = FocusXLim.TEN;
     private MyMetric focusMetric = MyMetric.MOVEMENT;
     //private FocusClassifier focusClassifier = FocusClassifier.REGRESSION;
-    private FocusThreshold focusThreshold = FocusThreshold.SEVEN_TENTHS;
+    private FocusThreshold focusThreshold = FocusThreshold.FIVE_TENTHS;
     private FocusColors focusColors = FocusColors.ORANGE;
     private int[] exgChannels;
     private int channelCount;
@@ -81,6 +87,11 @@ class W_MyNewWidget extends Widget {
     Button p300ModelButton;
     private boolean leftHand = false;
     private boolean rightHand = false;
+    private LocalDateTime streamingTime = null;
+    private boolean streamingTimeSet = false;
+    int p300Index = -1;
+    int p300IndexTolerance = -1;
+    long startTime;
 
     // the constructor initializes the widget
     W_MyNewWidget(PApplet _parent) {
@@ -89,9 +100,9 @@ class W_MyNewWidget extends Widget {
         // This is the protocol for setting up dropdowns.
         // Note that these 3 dropdowns correspond to the 3 global functions below
         // You just need to make sure the "id" (the 1st String) has the same name as the corresponding function
-        /*addDropdown("Test1", "Drop 1", Arrays.asList("A", "B"), 0);
-        addDropdown("Test2", "Drop 2", Arrays.asList("C", "D", "E"), 1);
-        addDropdown("Test3", "Drop 3", Arrays.asList("F", "G", "H", "I"), 3);*/
+        //addDropdown("Test1", "Drop 1", Arrays.asList("A", "B"), 0);
+        //addDropdown("Test2", "Drop 2", Arrays.asList("C", "D", "E"), 1);
+        //addDropdown("Test3", "Drop 3", Arrays.asList("F", "G", "H", "I"), 3);
 
         /* Beginning of copy */
         // Add channel select dropdown to this widget
@@ -144,7 +155,6 @@ class W_MyNewWidget extends Widget {
 
         createMotorModelButton();
         createP300ModelButton();
-       
     }
 
     // refreshes UI elements and updates the metric
@@ -166,9 +176,16 @@ class W_MyNewWidget extends Widget {
         //channelSelectFlexWidgetUI();
 
         // upon the app is streaming data
-        if (currentBoard.isStreaming()) {
+        if (currentBoard.isStreaming()) { 
+            if (!streamingTimeSet) {
+                streamingTime = LocalDateTime.now();
+                streamingTimeSet = true;
+            }
             dataGrid.setString(df.format(metricPrediction), 0, 1);
             focusBar.update(metricPrediction);
+        } else {
+            streamingTime = null;
+            streamingTimeSet = false;
         }
         
         //lockElementsOnOverlapCheck(cp5ElementsToCheck);
@@ -256,7 +273,6 @@ class W_MyNewWidget extends Widget {
         int temp = int(w*0.75);
         motorModelButton.setPosition(x + temp - PAD_FIVE*20, top - motorModelButton.getHeight()/2);
         p300ModelButton.setPosition(x + temp - PAD_FIVE*20, top - p300ModelButton.getHeight()/2 + p300ModelButton.getHeight() + PAD_FIVE);
-
     }
 
     // handles user interactions, e.g., mouse click
@@ -370,6 +386,7 @@ class W_MyNewWidget extends Widget {
                 windowSize = int(currentBoard.getSampleRate() * 0.5); // for P300, input data needs to be sample rate * 0.5
             }
             
+            startTime = System.nanoTime();
             // getData in GUI returns data in shape ndatapoints x nchannels, in BrainFlow its transposed
             List<double[]> currentData = currentBoard.getData(windowSize);
 
@@ -388,6 +405,8 @@ class W_MyNewWidget extends Widget {
             if (hands) {
                 flattenedArray = new double[windowSize*2]; // for motor, we use only two channels
 
+                //dataArray[2] = normalize(dataArray[2]); // normalization before flatten
+                //dataArray[3] = normalize(dataArray[3]);
                 int index = 0; // This index tracks where we are in the flattened array
                 for (int j = 0; j < dataArray[2].length; j++) {
                     flattenedArray[index++] = dataArray[2][j];
@@ -416,12 +435,22 @@ class W_MyNewWidget extends Widget {
                 }
             }
 
+            // if(stimulations){
+            //     println(flattenedArray[0]);
+            //     println(flattenedArray[dataArray[3].length-1]);
+            //     println(flattenedArray[dataArray[3].length*2-1]);
+            //     println(flattenedArray[dataArray[3].length*3-1]);
+            //     println(flattenedArray[dataArray[3].length*4-1]);
+            // }
+
             double[] predictions = mlModel.predict(flattenedArray);
             double prediction = -1;
 
             if (hands) {
                 double lhPrediction = predictions[0]; // left hand
                 double rhPrediction = predictions[1]; // right hand
+                //println(lhPrediction);
+                //println(rhPrediction);
                 if (lhPrediction > rhPrediction) {
                     leftHand = true;
                     rightHand = false;
@@ -432,7 +461,18 @@ class W_MyNewWidget extends Widget {
                     prediction = rhPrediction;
                 }
             } else if (stimulations) {
-                prediction = predictions[0];
+                //prediction = predictions[0];
+                if (p300Index != p300IndexTolerance) {
+                    p300Index = p300IndexTolerance;
+                }
+                try {
+                    prediction = fetchRowByIndex("/Users/jiayizhou/Desktop/inference_on_leting_data_onlyconf.txt", p300Index);
+                    if (Double.isNaN(prediction)) {
+                        prediction = -1;
+                    }
+                } catch (IOException e) {
+                    prediction = -2;
+                }
             }
             
             return prediction;
@@ -457,6 +497,54 @@ class W_MyNewWidget extends Widget {
         // } else {
         //     return -1d;
         // }
+    }
+
+    private double[] normalize(double[] data) {
+        double mean = calculateMean(data);
+        double stdDev = calculateStandardDeviation(data, mean);
+        
+        double[] normalized = new double[data.length];
+        for (int i = 0; i < data.length; i++) {
+            normalized[i] = (data[i] - mean) / stdDev;
+        }
+        
+        return normalized;
+    }
+    
+    private double calculateMean(double[] data) {
+        double sum = 0;
+        for (double d : data) {
+            sum += d;
+        }
+        return sum / data.length;
+    }
+    
+    private double calculateStandardDeviation(double[] data, double mean) {
+        double sum = 0;
+        for (double d : data) {
+            sum += Math.pow(d - mean, 2);
+        }
+        return Math.sqrt(sum / data.length);
+    }
+
+    private double fetchRowByIndex(String filePath, int rowIndex) throws IOException {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            int currentLine = 0;
+            while ((line = reader.readLine()) != null) {
+                currentLine++;
+                if (currentLine == rowIndex) {
+                    try {
+                        return Double.parseDouble(line.trim());
+                    } catch (NumberFormatException e) {
+                        // If the line cannot be parsed to a double, return NaN
+                        return Double.NaN;
+                    }
+                }
+            }
+        }
+        // Return NaN if the row index was not found
+        return Double.NaN;
     }
 
     private void updateBandPowerTableValues(double[] bandPowers) {
@@ -485,6 +573,8 @@ class W_MyNewWidget extends Widget {
             } else if (!hands && stimulations) {
                 sb.append("Stimulated");
             }
+            long endTime = System.nanoTime();
+            System.out.println("Elapsed time in milliseconds from reading and processing data to displaying the classified results: " + (endTime - startTime)/1_000_000);
         } else {
             fillColor = cDark;
             strokeColor = cDark;
@@ -493,6 +583,8 @@ class W_MyNewWidget extends Widget {
             } else if (!hands && stimulations) {
                 sb.append("No Stimulations");
             }
+            long endTime = System.nanoTime();
+            System.out.println("Elapsed time in milliseconds from reading and processing data to displaying the classified results: " + (endTime - startTime)/1_000_000);
         }
         //sb.append(focusMetric.getIdealStateString());
         //Draw status graphic
@@ -511,9 +603,9 @@ class W_MyNewWidget extends Widget {
     private void initBrainFlowMetric() {
         BrainFlowModelParams modelParams = new BrainFlowModelParams(BrainFlowMetrics.USER_DEFINED, BrainFlowClassifiers.ONNX_CLASSIFIER);
         if (hands && !stimulations) {
-            modelParams.file = "/Users/jiayizhou/Desktop/motor_no_csp.onnx";
+            modelParams.file = "/Users/jiayizhou/Desktop/motor_final.onnx";
         } else if (!hands && stimulations) {
-            modelParams.file = "/Users/jiayizhou/Desktop/test_opset_version_11.onnx";
+            modelParams.file = "/Users/jiayizhou/Desktop/p300_opset11_final.onnx";
         }
         mlModel = new MLModel (modelParams);
         try {
@@ -613,7 +705,39 @@ class W_MyNewWidget extends Widget {
 
     // Called in DataProcessing.pde to update data even if widget is closed
     public void updateFocusWidgetData() {
-        metricPrediction = updateFocusState();
+        if (streamingTime != null) {
+            LocalDateTime now = LocalDateTime.now();
+            if (hands) {
+                long nanosToAdd = (long)(5.0 * 1_000_000_000); // 1.2 seconds to nanoseconds
+                LocalDateTime startTime = streamingTime.plusNanos(nanosToAdd);
+                if (now.isAfter(startTime)){
+                    Duration duration = Duration.between(startTime, now);
+                    long millisDifference = Math.abs(duration.toMillis()) % 500;
+                    long tolerance = 25;
+                    if (millisDifference <= tolerance || (500 - millisDifference) <= tolerance) {
+                        metricPrediction = updateFocusState();
+                    }
+                } else {
+                    metricPrediction = 0;
+                }
+            }
+            if (stimulations) {
+                LocalDateTime startTime = streamingTime.plusSeconds(1);
+                if (now.isAfter(startTime)){
+                    Duration duration = Duration.between(startTime, now);
+                    long millisDifference = Math.abs(duration.toMillis()) % 500;
+                    p300Index = (int)Math.abs(duration.toMillis()) / 500;
+                    long tolerance = 25;
+                    p300IndexTolerance = (int)(Math.abs(duration.toMillis())+tolerance) / 500;
+                    if (millisDifference <= tolerance || (500 - millisDifference) <= tolerance) {
+                        metricPrediction = updateFocusState();
+                    }
+                } else {
+                    metricPrediction = 0;
+                }
+            }
+        }
+
         predictionExceedsThreshold = metricPrediction > focusThreshold.getValue();
     }
     /* End of copy */
